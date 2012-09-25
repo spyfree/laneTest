@@ -145,6 +145,15 @@ class LaneFinder
 					 void binLinesRight(std::vector< std::vector< struct line_points* > > &bin, IplImage *img, IplImage* copy_canny_img, std::string cannyParam);
 
 					 void copy_line_points_Struct(line_points **p_target, line_points* p_src);
+
+					 /*
+					 * the self joining version for doJoiningTwoOrient
+					 */
+					 void doSelfJoining(CvPoint ep,std::vector< std::vector< struct line_points* > > &bin,std::vector< struct line_points*> &longestLine,int dist,char orientation );
+					 /**
+					 * the horizontal version for doJoiningTwoOrient
+					 */
+					 void doJoiningTwoOrientH(CvPoint ep, std::vector< std::vector< struct line_points* > > &bin, std::vector< struct line_points*> &longestLine, int dist );
 					 /**
 					  * check if the given point is close (dist) to some starting point in the given bin.
 					  * if so find the point in the bin that is closest to ep and from there on push back everything into longestLine and clear it in bin
@@ -190,6 +199,8 @@ class LaneFinder
 					 int writeCurve(std::vector< CvPoint >  &curve, char *filename);
 					 int publishCurve( std::vector< CvPoint >  &curve);
 					 
+					 void printBinInColor(IplImage *imgColor, const std::vector< std::vector< struct line_points* > > &bin,char color);
+					 //void printBinRightInColor(IplImage *imgColor, const std::vector< std::vector< struct line_points* > > &binRight);
 					 void printLongestLineInColor(IplImage *imgColor, const std::vector< struct line_points*> &longestLine, int defaultC=-1);
 					 void printLongestLineInColorTO(IplImage* imgColor, const std::vector< struct line_points*  > &longestLine, int limit);
 					 /**

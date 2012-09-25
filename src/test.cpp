@@ -53,8 +53,10 @@ int main(int args, char *argv[])
 	//close to the image bottom. For that two points are necessary, the starting point of the found line
 	//and another point on the found line. It must be specified how many pixels difference this other
 	//point should have, in this case I use 10.
-
-	myLaneFinder->extractLine(imgIn, imgOut, lineRight, searchLimitLeft, searchLimitRight, showOutput, 80, 20);
+	double t = (double)cvGetTickCount();
+	myLaneFinder->extractLine(imgIn, imgOut, lineRight, searchLimitLeft, searchLimitRight, showOutput, 100, 20);
+	t = ((double)cvGetTickCount() - t)/(cvGetTickFrequency()*1000); 
+	printf( "exec time = %gms\n", t );
 	cout<<"The length of the detected curve is: "<<lineRight.size()<<" pixels. "<<endl;
 	//you can write the extracted curve to a file
 	//each row in this file is: x-coordinate y-coordinate

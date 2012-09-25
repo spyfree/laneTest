@@ -399,17 +399,20 @@ void LaneFinder::findLines(IplImage *img, IplImage *canny_img, double* alpha,int
 		int binsize=longestLine.size();	
 		if(l_r%2==0){//l_r==even -> check bin
 
-		  doJoiningTwoOrient(ep, bin, longestLine, diff);
-		  l_r++;
+		  //doJoiningTwoOrient(ep, bin, longestLine, diff);
+		  //doJoiningTwoOrientH(ep,bin,longestLine,diff);
+			doSelfJoining(ep,binRight,longestLine,diff,'R');
+		  //l_r++;
 		}
 		else//l_r odd -> check binRight
 		{
-		  doJoiningTwoOrient(ep, binRight, longestLine, diff);
-		  l_r++;
+		  //doJoiningTwoOrient(ep, binRight, longestLine, diff);
+			doSelfJoining(ep,bin,longestLine,diff,'L');
+		  //l_r++;
 		}
 
 		diff += 10;
-		if(diff>=100){break;}
+		if(diff>=80){break;}
 		if(binsize< longestLine.size())
 		{
 		  notdone=true;
@@ -428,7 +431,7 @@ void LaneFinder::findLines(IplImage *img, IplImage *canny_img, double* alpha,int
 		 getTangentParams(longestLine, highest_y_index, m, b, angle, startpoint, endpoint, lengthTangent, img->width, img);
 		 if(startpoint.y < img->height-3  && startpoint.x < img->width)//the extrapolation routine copies a lot, do not call it, if not necessary
 		 {
-			doExtrapolation(longestLine, canny_img,  m, b, startpoint);
+			//doExtrapolation(longestLine, canny_img,  m, b, startpoint);
 		 }
 		 getTangentParams(longestLine, highest_y_index, m, b, angle, startpoint, endpoint, lengthTangent, img->width, img);
 		 *alpha = angle;
@@ -490,7 +493,7 @@ void LaneFinder::binLines(vector< vector< struct line_points* > > &bin, IplImage
 		  }
 		  else if(cannyParam.compare("real")==0)
 		  { 
-					 cvCanny(img, canny_img, 200, 100, 3 );
+					 cvCanny(img, canny_img, 200, 30, 3 );
 					 //cout<<"you are choosing REAL\n";
 					 //cvCanny(img, canny_img, 2000, 2300, 5 );
 					 displayImage(canny_img, "canny");
@@ -507,7 +510,7 @@ void LaneFinder::binLines(vector< vector< struct line_points* > > &bin, IplImage
 
 		  for(int b=img->height-1; b>1; b--)
 		  {
-					 for(int a=0; a<img->width; a++)
+					 for(int a=img->width-1; a>=0; a--)
 					 {
 								pic_canny = (int)(CV_IMAGE_ELEM(canny_img, uchar, b,a));
 								if(pic_canny == 255 )
@@ -596,7 +599,9 @@ void LaneFinder::binLinesRight(vector< vector< struct line_points* > > &bin, Ipl
 		  }
 		  else if(cannyParam.compare("real")==0)
 		  { 
-					 cvCanny(img, canny_img, 2000, 2300, 5 );
+					 cvCanny(img, canny_img, 1500, 2300, 5 );
+					 //cvCanny(img, canny_img, 500, 100, 3 );
+					 displayImage(canny_img, "canny2");
 		  }
 		  else
 		  {
@@ -660,6 +665,218 @@ void LaneFinder::copy_line_points_Struct(line_points **p_target, line_points* p_
 		  (*p_target)->no_neighbour = p_src->no_neighbour;
 }
 
+void LaneFinder::doSelfJoining(CvPoint ep,std::vector< std::vector< struct line_points* > > &bin,std::vector< struct line_points*> &longestLine,int dist,char orientation)
+{
+	int l=10;
+	double maxAngle = M_PI/3;//0.6;//in radian [0, pi];//we seek the segment with the greates radian
+
+
+	double minDist=1000;
+	double minDistB=1000;
+	int inx=-1;
+	int inxB=-1;
+	//check if there is a pixel close to end of longestLine and if it is good continued
+	for(int i=0; i<bin.size();i++)
+	{
+		if( longestLine.size() > l)
+		{
+			CvPoint sp=bin[i][0]->point;
+			CvPoint cp = longestLine[longestLine.size()-l]->point;
+			ep = longestLine[longestLine.size()-1]->point;
+			if(((orientation=='L' && sp.x <= ep.x+10)||(orientation=='R'&&sp.x >= ep.x-10))&&abs(sp.y-ep.y)<4)
+			{
+				if(!isHorizontalLine(bin[i]))
+					continue;
+
+				double diff =distBetweenPoints(ep ,sp);
+				if(diff<minDist)
+				{
+					double angle = angleBetweenLines(ep, cp, ep, sp);
+					if(angle==0 && diff< dist && diff<minDistB)
+					{
+						inxB =i;
+						maxAngle=M_PI/2+0.1;//0.9;
+						minDistB=diff;
+					}
+					else if(diff <minDist)
+					{
+						inx =i;
+						minDist=diff;
+					}
+					else if(angle > maxAngle && diff < dist)
+					{
+						maxAngle=angle;
+						inx =i;
+						minDist=diff;
+					}
+				}
+			}
+		}
+	}
+	int matchingSeg=-1;
+	if(minDist<=16){matchingSeg = inx;}
+	else if(maxAngle >0.9 ){matchingSeg=inxB;}
+	else if(minDist<dist)
+	{
+		CvPoint ep1=longestLine[longestLine.size()-1]->point;
+		CvPoint ep2= longestLine[longestLine.size()-l]->point;
+		CvPoint ep3=bin[inx][bin[inx].size()-1]->point;
+		double angleTmp=angleBetweenLines(ep1, ep2, ep1, ep3);
+		if(angleTmp > 0.4)
+		{	
+			matchingSeg=inx;
+		}
+	}
+	if(matchingSeg==-1)
+	{
+		return;
+	}
+	int minDist2=1000;
+	int inx2=-1;
+	for(int i=0; i<bin[matchingSeg].size();i++)
+	{
+		double diff2=distBetweenPoints(bin[matchingSeg][i]->point, ep);
+		if(diff2<minDist2)
+		{
+			minDist2=static_cast<int>(floor(diff2));
+			inx2=i;
+		}
+		if(diff2==0)
+		{inx2 ++; break;}
+	}
+	if(inx2 > 0 && inx2<bin[matchingSeg].size())
+	{
+		for(int i=0; i<bin[matchingSeg].size()-inx2; i++)
+		{
+			struct line_points *p;
+			copy_line_points_Struct(&p, bin[matchingSeg][inx2+i]);
+			longestLine.push_back(p);
+		}
+	}
+	else
+	{
+		for(int i=0; i<bin[matchingSeg].size(); i++)
+		{
+			struct line_points *p;
+			copy_line_points_Struct(&p, bin[matchingSeg][i]);
+			longestLine.push_back(p);
+		}
+	}
+	return;
+}
+
+/**
+* the horizontal version for doJoiningTwoOrient
+*/
+void LaneFinder::doJoiningTwoOrientH(CvPoint ep, std::vector< std::vector< struct line_points* > > &bin, std::vector< struct line_points*> &longestLine, int dist )
+{
+	int l=10;
+	double maxAngle = M_PI/3;//0.6;//in radian [0, pi];//we seek the segment with the greates radian
+
+
+	double minDist=1000;
+	double minDistB=1000;
+	int inx=-1;
+	int inxB=-1;
+	//check if there is a pixel close to end of longestLine and if it is good continued
+	for(int i=0; i<bin.size();i++)
+	{
+		if( longestLine.size() > l)
+		{
+			CvPoint sp=bin[i][0]->point;
+			CvPoint cp = longestLine[longestLine.size()-l]->point;
+			ep = longestLine[longestLine.size()-1]->point;
+			if(sp.x >= ep.x)
+			{
+				vector< struct line_points*>::iterator iter=bin[i].begin();
+				while((*iter)->point.x >=ep.x)
+				{
+					sp=(*iter)->point;
+					if((iter+1) != bin[i].end())
+					{
+						iter++;
+					}
+					else
+					{
+						break;
+					}
+				}
+			}
+			double diff =distBetweenPoints(ep ,sp);
+			if(diff<minDist)
+			{
+				double angle = angleBetweenLines(ep, cp, ep, sp);
+				if(angle==0 && diff< dist && diff<minDistB)
+				{
+					inxB =i;
+					maxAngle=M_PI/2+0.1;//0.9;
+					minDistB=diff;
+				}
+				else if(diff <minDist)
+				{
+					inx =i;
+					minDist=diff;
+				}
+				else if(angle > maxAngle && diff < dist)
+				{
+					maxAngle=angle;
+					inx =i;
+					minDist=diff;
+				}
+			}
+		}
+	}
+	int matchingSeg=-1;
+	if(minDist<=2){matchingSeg = inx;}
+	else if(maxAngle >0.9 ){matchingSeg=inxB;}
+	else if(minDist<dist)
+	{
+		CvPoint ep1=longestLine[longestLine.size()-1]->point;
+		CvPoint ep2= longestLine[longestLine.size()-l]->point;
+		CvPoint ep3=bin[inx][bin[inx].size()-1]->point;
+		double angleTmp=angleBetweenLines(ep1, ep2, ep1, ep3);
+		if(angleTmp > 0.4)
+		{	
+			matchingSeg=inx;
+		}
+	}
+	if(matchingSeg==-1)
+	{
+		return;
+	}
+	int minDist2=1000;
+	int inx2=-1;
+	for(int i=0; i<bin[matchingSeg].size();i++)
+	{
+		double diff2=distBetweenPoints(bin[matchingSeg][i]->point, ep);
+		if(diff2<minDist2)
+		{
+			minDist2=static_cast<int>(floor(diff2));
+			inx2=i;
+		}
+		if(diff2==0)
+		{inx2 ++; break;}
+	}
+	if(inx2 > 0 && inx2<bin[matchingSeg].size())
+	{
+		for(int i=0; i<bin[matchingSeg].size()-inx2; i++)
+		{
+			struct line_points *p;
+			copy_line_points_Struct(&p, bin[matchingSeg][inx2+i]);
+			longestLine.push_back(p);
+		}
+	}
+	else
+	{
+		for(int i=0; i<bin[matchingSeg].size(); i++)
+		{
+			struct line_points *p;
+			copy_line_points_Struct(&p, bin[matchingSeg][i]);
+			longestLine.push_back(p);
+		}
+	}
+	return;
+}
 
 
 /**
@@ -726,7 +943,7 @@ void LaneFinder::doJoiningTwoOrient(CvPoint ep, std::vector< std::vector< struct
 					 }
 		  }
 		  int matchingSeg=-1;
-		  if(minDist<=2){matchingSeg = inx;}
+		  if(minDist<=5){matchingSeg = inx;}
 		  else if(maxAngle >0.9 ){matchingSeg=inxB;}
 		  else if(minDist<dist)
 		  {
@@ -1299,7 +1516,35 @@ int LaneFinder::improveGoodCont(std::vector< struct line_points*> & longestLine,
 		  }
 		  return -1;
 }
-
+//prints all the bin lines.
+void LaneFinder::printBinInColor(IplImage *imgColor, const std::vector< std::vector< struct line_points* > > &bin,char color)
+{
+	int width =imgColor->width;
+	int height=imgColor->height;
+	CvScalar s;
+	s.val[0]=0;//blue
+	s.val[1]=0;//green
+	s.val[2]=0;//red
+	switch (color)
+	{
+		case 'R':s.val[2]=255;break;
+		case 'G':s.val[1]=255;break;
+		case 'B':s.val[0]=255;break;
+		default:s.val[2]=255;
+	}
+	int dotsize = 1;
+	int length = bin.size();
+	for (int i = 0;i<length;i++)
+	{
+		s.val[1]=0;
+		int a = bin[i].size();
+		for(int j = 0;j<a;j++)
+		{
+			s.val[1] = s.val[1]+5;
+			cvCircle(imgColor, cvPoint(bin[i][j]->point.x, bin[i][j]->point.y),1, s, dotsize);
+		}
+	}
+}
 //prints the given vector in a light color and adds and adds. This was done for demonstration purpose
 void LaneFinder::printLongestLineInColorOverlay(IplImage* imgColor, const std::vector< struct line_points*  > &longestLine, int defaultC)
 {
@@ -1709,6 +1954,7 @@ int LaneFinder::extractLine(IplImage *imgInput, IplImage *imgOutput, std::vector
 	  IplImage* canny_img = cvCloneImage(imgInput);
 	  vector< vector< struct line_points* > > bin;
 	  vector< vector< struct line_points* > > binRight;
+
 	  binLines(bin, imgInput, canny_img, "real");
 	  if(canny_img!=NULL)
 	  {
@@ -1727,12 +1973,17 @@ int LaneFinder::extractLine(IplImage *imgInput, IplImage *imgOutput, std::vector
 	  std::vector< struct line_points*> longestLine;
 	  int yLowerLimit=0;
 	  int yHigherLimit=imgInput->height;
+	  
 	  findLines(imgInput, img_out, _alpha, x_pos_tmp, longestLine, lowerLimit, higherLimit, yLowerLimit,yHigherLimit, bin, binRight, minSize, lengthTangent);
+
 	  if(debug)
 	  {
 		 cvCvtColor(imgInput, imgOutput, CV_GRAY2BGR);
 		 printLongestLineInColor(imgOutput, longestLine, -1);
+		 //printBinInColor(imgOutput,bin,'R');
+		 //printBinInColor(imgOutput,binRight,'B');
 	  }
+	  
 
 	  //if you want to use the goodContinuation smoothing uncomment this part:
 	  //int breakpoint = myLaneFinder->improveGoodCont(longestLine, 10, 10, imgInput);
