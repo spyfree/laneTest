@@ -199,6 +199,7 @@ class LaneFinder
 					 int writeCurve(std::vector< CvPoint >  &curve, char *filename);
 					 int publishCurve( std::vector< CvPoint >  &curve);
 					 
+					 void testShadow(IplImage *imgColor, const std::vector< struct line_points*> &longestLine);
 					 void printBinInColor(IplImage *imgColor, const std::vector< std::vector< struct line_points* > > &bin,char color);
 					 //void printBinRightInColor(IplImage *imgColor, const std::vector< std::vector< struct line_points* > > &binRight);
 					 void printLongestLineInColor(IplImage *imgColor, const std::vector< struct line_points*> &longestLine, int defaultC=-1);
@@ -213,7 +214,7 @@ class LaneFinder
 					 int extractLineWithoutKalman(IplImage *imgInput, IplImage *imgOutput, std::vector<CvPoint> &lineRight,  int searchLimitLeft, int searchLimitRight, bool debug, int minSize, int lengthTangent);
 
 
-					 int extractLine(IplImage *imgInput, IplImage *imgOutput, std::vector<CvPoint> &lineRight, int searchLimitLeft, int searchLimitRight, bool debug, int minSize, int lengthTangent);
+					 int extractLine(IplImage *imgInput, IplImage *imgOutput, IplImage *test,std::vector<CvPoint> &lineRight, int searchLimitLeft, int searchLimitRight, bool debug, int minSize, int lengthTangent);
 
 					 /**
 					  * The function implements a scalar kalman filter

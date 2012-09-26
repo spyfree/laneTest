@@ -17,11 +17,20 @@ int main(int args, char *argv[])
 	// You need to read in an image. Note, you can use different file formats,
 	// everything supported by OpenCv
 	IplImage* imgInTmp = cvLoadImage(argv[1], 0);//this is the image you want to process
+	
 	//displayImage(imgInTmp, "find right lane on this image, click image to proceed");
 	//you could use it as is, but here I downscale it, for faster processing
 	CvRect myRoi = cvRect(0,0, imgInTmp->width, imgInTmp->height);
 	cvSetImageROI(imgInTmp, myRoi);
 	IplImage* imgIn = createImage(0, imgInTmp->width/2, (imgInTmp->height)/2);
+
+	IplImage* testImg = cvLoadImage(argv[1]);
+	IplImage* testImgIN = cvCreateImage(cvSize(testImg->width/2,testImg->height/2),IPL_DEPTH_8U,3);
+	cvResize(testImg,testImgIN,CV_INTER_LINEAR);
+	//cvCvtColor(testImg, testImgIN, CV_BGR2YCrCb);
+	displayImage(testImgIN, "test pic");
+
+
 	cvResize(imgInTmp, imgIn);
 	cvReleaseImage(&imgInTmp);
 	// displayImage(imgIn, "this is the downscaled image, click image to proceed");
@@ -54,7 +63,7 @@ int main(int args, char *argv[])
 	//and another point on the found line. It must be specified how many pixels difference this other
 	//point should have, in this case I use 10.
 	double t = (double)cvGetTickCount();
-	myLaneFinder->extractLine(imgIn, imgOut, lineRight, searchLimitLeft, searchLimitRight, showOutput, 100, 20);
+	myLaneFinder->extractLine(imgIn, imgOut,testImgIN, lineRight, searchLimitLeft, searchLimitRight, showOutput, 100, 20);
 	t = ((double)cvGetTickCount() - t)/(cvGetTickFrequency()*1000); 
 	printf( "exec time = %gms\n", t );
 	cout<<"The length of the detected curve is: "<<lineRight.size()<<" pixels. "<<endl;

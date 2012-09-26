@@ -310,11 +310,21 @@ void LaneFinder::findLines(IplImage *img, IplImage *canny_img, double* alpha,int
 			{
 
 				int j =0;
+				int sum = 0;
+				int numofout = 0;
 				for (;j<a;j++)
 				{
-					if(bin[i][j]->point.y < yLowerLimit || bin[i][j]->point.y >yHigherLimit)
-						break;
+					sum = sum+ CV_IMAGE_ELEM(img,uchar,bin[i][j]->point.y+7,bin[i][j]->point.x) ;
+					if (CV_IMAGE_ELEM(img,uchar,bin[i][j]->point.y,bin[i][j]->point.x) < CV_IMAGE_ELEM(img,uchar,bin[i][j]->point.y + 3,bin[i][j]->point.x))
+					{
+						numofout++;
+					}
+					//if(binRight[i][j]->point.y < yLowerLimit || binRight[i][j]->point.y > yHigherLimit)
+					//break;
 				}
+				int average = sum/a;
+				if( average>190)
+					continue;
 
 				if( j== a )
 				{
@@ -336,12 +346,21 @@ void LaneFinder::findLines(IplImage *img, IplImage *canny_img, double* alpha,int
 		if(a > sizeTmp && (binRight[i][0]->point.x<=higherLimit) && (binRight[i][0]->point.x>=lowerLimit) &&  binRight[i][0]->point.y > yLowerLimit && binRight[i][0]->point.y < yHigherLimit&&isHorizontalLine(binRight[i]))
 		{
 			int j = 0;
+			int sum = 0;
+			int numofout = 0;
 			for (;j<a;j++)
 			{
-				if(binRight[i][j]->point.y < yLowerLimit || binRight[i][j]->point.y > yHigherLimit)
-					break;
+				sum = sum + CV_IMAGE_ELEM(img,uchar,binRight[i][j]->point.y+7,binRight[i][j]->point.x) ;
+				if (CV_IMAGE_ELEM(img,uchar,binRight[i][j]->point.y,binRight[i][j]->point.x) < CV_IMAGE_ELEM(img,uchar,binRight[i][j]->point.y + 3,binRight[i][j]->point.x))
+				{
+					numofout++;
+				}
+				//if(binRight[i][j]->point.y < yLowerLimit || binRight[i][j]->point.y > yHigherLimit)
+					//break;
 			}
-
+			int average = sum/a;
+			if( average > 190)
+				continue;
 			if(j == a)
 			{
 				sizeTmp=a;
@@ -496,7 +515,7 @@ void LaneFinder::binLines(vector< vector< struct line_points* > > &bin, IplImage
 					 cvCanny(img, canny_img, 200, 30, 3 );
 					 //cout<<"you are choosing REAL\n";
 					 //cvCanny(img, canny_img, 2000, 2300, 5 );
-					 displayImage(canny_img, "canny");
+					 //displayImage(canny_img, "canny");
 		  }
 		  else
 		  {
@@ -601,7 +620,7 @@ void LaneFinder::binLinesRight(vector< vector< struct line_points* > > &bin, Ipl
 		  { 
 					 cvCanny(img, canny_img, 1500, 2300, 5 );
 					 //cvCanny(img, canny_img, 500, 100, 3 );
-					 displayImage(canny_img, "canny2");
+					 //displayImage(canny_img, "canny2");
 		  }
 		  else
 		  {
@@ -1545,6 +1564,24 @@ void LaneFinder::printBinInColor(IplImage *imgColor, const std::vector< std::vec
 		}
 	}
 }
+
+void LaneFinder::testShadow(IplImage *imgColor, const std::vector< struct line_points*> &longestLine)
+{
+	int width =imgColor->width;
+	int height=imgColor->height;
+	int sum = 0;
+	int length=longestLine.size();
+	if (length ==0)
+		return;
+	for (int i=0;i<length;i++)
+	{
+		int x = longestLine[i]->point.x;
+		int y = longestLine[i]->point.y;
+		sum = sum + (CV_IMAGE_ELEM(imgColor, uchar, y, x*3) + CV_IMAGE_ELEM(imgColor, uchar, y, x*3+1) + CV_IMAGE_ELEM(imgColor, uchar, y, x*3+2))/3;
+	}
+	int average=sum/length;
+	return;
+}
 //prints the given vector in a light color and adds and adds. This was done for demonstration purpose
 void LaneFinder::printLongestLineInColorOverlay(IplImage* imgColor, const std::vector< struct line_points*  > &longestLine, int defaultC)
 {
@@ -1942,7 +1979,7 @@ double Tangent::calTangentValue(double m, int x, double b)
 		  return y;
 }
 
-int LaneFinder::extractLine(IplImage *imgInput, IplImage *imgOutput, std::vector<CvPoint> &lineRight,  int lowerLimit, int higherLimit, bool debug, int minSize, int lengthTangent)
+int LaneFinder::extractLine(IplImage *imgInput, IplImage *imgOutput, IplImage *test, std::vector<CvPoint> &lineRight,  int lowerLimit, int higherLimit, bool debug, int minSize, int lengthTangent)
 {
 	  IplImage* img_out =  cvCloneImage(imgInput);
 	  //put processing here
@@ -1979,6 +2016,7 @@ int LaneFinder::extractLine(IplImage *imgInput, IplImage *imgOutput, std::vector
 	  if(debug)
 	  {
 		 cvCvtColor(imgInput, imgOutput, CV_GRAY2BGR);
+		 testShadow(test,longestLine);
 		 printLongestLineInColor(imgOutput, longestLine, -1);
 		 //printBinInColor(imgOutput,bin,'R');
 		 //printBinInColor(imgOutput,binRight,'B');
