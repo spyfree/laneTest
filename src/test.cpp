@@ -22,10 +22,10 @@ int main(int args, char *argv[])
 	//you could use it as is, but here I downscale it, for faster processing
 	CvRect myRoi = cvRect(0,0, imgInTmp->width, imgInTmp->height);
 	cvSetImageROI(imgInTmp, myRoi);
-	IplImage* imgIn = createImage(0, imgInTmp->width/2, (imgInTmp->height)/2);
+	IplImage* imgIn = createImage(0, imgInTmp->width/2, (imgInTmp->height/2));
 
 	IplImage* testImg = cvLoadImage(argv[1]);
-	IplImage* testImgIN = cvCreateImage(cvSize(testImg->width/2,testImg->height/2),IPL_DEPTH_8U,3);
+	IplImage* testImgIN = cvCreateImage(cvSize(testImg->width,testImg->height),IPL_DEPTH_8U,3);
 	cvResize(testImg,testImgIN,CV_INTER_LINEAR);
 	//cvCvtColor(testImg, testImgIN, CV_BGR2YCrCb);
 	displayImage(testImgIN, "test pic");

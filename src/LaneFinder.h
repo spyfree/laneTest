@@ -53,6 +53,7 @@ double angleBetweenLines(CvPoint startL1, CvPoint endL1, CvPoint startL2, CvPoin
  * returns euclidean distance between two pixels
  */
 double distBetweenPoints(CvPoint p1, CvPoint p2);
+bool isPointsConnected(CvPoint p1, CvPoint p2);
 
 /**
  * The struct housing line pixels
@@ -116,7 +117,7 @@ class LaneFinder
 					  */
 
 					 void findLines(IplImage* img, IplImage* img_out, double* alpha, int &x_pos, std::vector< struct line_points*> &longestLine, int lowerLimit, int higherLimit, int yLowerLimit,int yHigherLimit, std::vector< std::vector< struct line_points* > > &bin, std::vector< std::vector< struct line_points* > > &binRight, int minSize, int lengthTangent );
-
+					 void findLines2(IplImage*img, std::vector<std::vector< struct line_points*>> &Lines,  std::vector< std::vector< struct line_points* > > &bin, std::vector< std::vector< struct line_points* > > &binRight);
 					 /**
 					  * converts pixels from the extracted lane from the lineStruct to CvPoints
 					  */
@@ -199,6 +200,8 @@ class LaneFinder
 					 int writeCurve(std::vector< CvPoint >  &curve, char *filename);
 					 int publishCurve( std::vector< CvPoint >  &curve);
 					 
+					 bool shouldBeOneLine(std::vector< struct line_points*> &first,std::vector< struct line_points*> &second);
+					 void connectLines(std::vector< std::vector< struct line_points* > > &lines, std::vector< std::vector< struct line_points* > > &stoplines);
 					 void testShadow(IplImage *imgColor, const std::vector< struct line_points*> &longestLine);
 					 void printBinInColor(IplImage *imgColor, const std::vector< std::vector< struct line_points* > > &bin,char color);
 					 //void printBinRightInColor(IplImage *imgColor, const std::vector< std::vector< struct line_points* > > &binRight);

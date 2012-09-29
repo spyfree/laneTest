@@ -239,7 +239,7 @@ bool LaneFinder::isHorizontalLine(std::vector<struct line_points* >  &vec)
 
 	double alpha = atan2(line[1],line[0]);
 
-	if (abs(alpha) < 0.1)
+	if (abs(alpha) < 0.08)
 		return true;
 	else
 		return false;
@@ -265,6 +265,46 @@ bool LaneFinder::isHorizontalLine(std::vector<struct line_points* >  &vec)
  * @return binRight: contains line segments going left to right
  */
 //minSize: consider a line a line if it has minimum length of minSize 
+void LaneFinder::findLines2(IplImage*img, std::vector<std::vector< struct line_points*>> &Lines, std::vector< std::vector< struct line_points* > > &bin, std::vector< std::vector< struct line_points* > > &binRight)
+{
+	if (bin.size()<=0&&binRight.size()<=0)
+	{
+		return;
+	}
+	int n=bin.size();
+	for(int i=0; i<n;i++){
+		if(bin[i].size() >5){
+			if(isHorizontalLine(bin[i]))
+			{
+				std::vector< struct line_points*> line;
+				for(int j=0; j< bin[i].size(); j++){
+					struct line_points *p;
+					copy_line_points_Struct(&p, bin[i][j]);
+					line.push_back(p);
+				}
+				Lines.push_back(line);
+			}
+		}
+	}
+
+	n=binRight.size();
+	for(int i=0; i<n;i++){
+		if(binRight[i].size()>5){
+			if(isHorizontalLine(binRight[i]))
+			{
+				std::vector< struct line_points*> line;
+				for(int j=0; j< binRight[i].size(); j++){
+					struct line_points *p;
+					copy_line_points_Struct(&p, binRight[i][j]);
+					line.push_back(p);
+				}
+				Lines.push_back(line);
+			}
+		}
+	}
+
+
+}
 void LaneFinder::findLines(IplImage *img, IplImage *canny_img, double* alpha,int &x_pos, std::vector< struct line_points*> &longestLine, int lowerLimit, int higherLimit, int yLowerLimit,int yHigherLimit,  std::vector< std::vector< struct line_points* > > &bin, std::vector< std::vector< struct line_points* > > &binRight, int minSize, int lengthTangent)
 {
     //cout<<"now in findLines\n";
@@ -312,19 +352,19 @@ void LaneFinder::findLines(IplImage *img, IplImage *canny_img, double* alpha,int
 				int j =0;
 				int sum = 0;
 				int numofout = 0;
-				for (;j<a;j++)
-				{
-					sum = sum+ CV_IMAGE_ELEM(img,uchar,bin[i][j]->point.y+7,bin[i][j]->point.x) ;
-					if (CV_IMAGE_ELEM(img,uchar,bin[i][j]->point.y,bin[i][j]->point.x) < CV_IMAGE_ELEM(img,uchar,bin[i][j]->point.y + 3,bin[i][j]->point.x))
-					{
-						numofout++;
-					}
-					//if(binRight[i][j]->point.y < yLowerLimit || binRight[i][j]->point.y > yHigherLimit)
-					//break;
-				}
-				int average = sum/a;
-				if( average>190)
-					continue;
+				//for (;j<a;j++)
+				//{
+				//	sum = sum+ CV_IMAGE_ELEM(img,uchar,bin[i][j]->point.y+7,bin[i][j]->point.x) ;
+				//	if (CV_IMAGE_ELEM(img,uchar,bin[i][j]->point.y,bin[i][j]->point.x) < CV_IMAGE_ELEM(img,uchar,bin[i][j]->point.y + 3,bin[i][j]->point.x))
+				//	{
+				//		numofout++;
+				//	}
+				//	//if(binRight[i][j]->point.y < yLowerLimit || binRight[i][j]->point.y > yHigherLimit)
+				//	//break;
+				//}
+				//int average = sum/a;
+				//if( average>190)
+				//	continue;
 
 				if( j== a )
 				{
@@ -348,19 +388,19 @@ void LaneFinder::findLines(IplImage *img, IplImage *canny_img, double* alpha,int
 			int j = 0;
 			int sum = 0;
 			int numofout = 0;
-			for (;j<a;j++)
-			{
-				sum = sum + CV_IMAGE_ELEM(img,uchar,binRight[i][j]->point.y+7,binRight[i][j]->point.x) ;
-				if (CV_IMAGE_ELEM(img,uchar,binRight[i][j]->point.y,binRight[i][j]->point.x) < CV_IMAGE_ELEM(img,uchar,binRight[i][j]->point.y + 3,binRight[i][j]->point.x))
-				{
-					numofout++;
-				}
-				//if(binRight[i][j]->point.y < yLowerLimit || binRight[i][j]->point.y > yHigherLimit)
-					//break;
-			}
-			int average = sum/a;
-			if( average > 190)
-				continue;
+			//for (;j<a;j++)
+			//{
+			//	sum = sum + CV_IMAGE_ELEM(img,uchar,binRight[i][j]->point.y+7,binRight[i][j]->point.x) ;
+			//	if (CV_IMAGE_ELEM(img,uchar,binRight[i][j]->point.y,binRight[i][j]->point.x) < CV_IMAGE_ELEM(img,uchar,binRight[i][j]->point.y + 3,binRight[i][j]->point.x))
+			//	{
+			//		numofout++;
+			//	}
+			//	//if(binRight[i][j]->point.y < yLowerLimit || binRight[i][j]->point.y > yHigherLimit)
+			//		//break;
+			//}
+			//int average = sum/a;
+			//if( average > 190)
+			//	continue;
 			if(j == a)
 			{
 				sizeTmp=a;
@@ -511,11 +551,17 @@ void LaneFinder::binLines(vector< vector< struct line_points* > > &bin, IplImage
 					 cvCanny(img, canny_img, 100, 255 );
 		  }
 		  else if(cannyParam.compare("real")==0)
-		  { 
-					 cvCanny(img, canny_img, 200, 30, 3 );
+		  {
+						IplConvKernel * shape = cvCreateStructuringElementEx(2,2,0,0,CV_SHAPE_RECT);
+						IplImage * temp = cvCreateImage(cvGetSize(img), 8,1);    
+						IplImage * imgM=cvCreateImage(cvGetSize(img), 8, 1);
+						cvMorphologyEx(img,imgM,temp,shape,CV_MOP_CLOSE,5);
+						cvShowImage("AAA", imgM);
+						cvWaitKey(0);
+					 cvCanny(imgM, canny_img, 200, 60, 3 );
 					 //cout<<"you are choosing REAL\n";
 					 //cvCanny(img, canny_img, 2000, 2300, 5 );
-					 //displayImage(canny_img, "canny");
+					 displayImage(canny_img, "canny");
 		  }
 		  else
 		  {
@@ -618,9 +664,15 @@ void LaneFinder::binLinesRight(vector< vector< struct line_points* > > &bin, Ipl
 		  }
 		  else if(cannyParam.compare("real")==0)
 		  { 
-					 cvCanny(img, canny_img, 1500, 2300, 5 );
+			  IplConvKernel * shape = cvCreateStructuringElementEx(2,2,0,0,CV_SHAPE_RECT);
+			  IplImage * temp = cvCreateImage(cvGetSize(img), 8,1);    
+			  IplImage * imgM=cvCreateImage(cvGetSize(img), 8, 1);
+			  cvMorphologyEx(img,imgM,temp,shape,CV_MOP_CLOSE,5);
+			  //cvShowImage("BBB", imgM);
+			  cvWaitKey(0);
+					 cvCanny(imgM, canny_img, 1500, 2300, 5 );
 					 //cvCanny(img, canny_img, 500, 100, 3 );
-					 //displayImage(canny_img, "canny2");
+					 displayImage(canny_img, "canny2");
 		  }
 		  else
 		  {
@@ -682,6 +734,83 @@ void LaneFinder::copy_line_points_Struct(line_points **p_target, line_points* p_
 		  (*p_target)->endpoint = p_src->endpoint;
 		  (*p_target)->startpoint = p_src->startpoint;
 		  (*p_target)->no_neighbour = p_src->no_neighbour;
+}
+bool LaneFinder::shouldBeOneLine(std::vector< struct line_points*> &first,std::vector< struct line_points*> &second)
+{
+	if (first.empty()||second.empty())
+	{
+		return false;
+	}
+	int length = first.size();
+	CvPoint sp=first[0]->point;
+	CvPoint ep=first[length-1]->point;
+
+	int clength = second.size();
+	CvPoint csp=second[0]->point;
+	CvPoint cep=second[clength-1]->point;
+
+	if ( isPointsConnected(ep ,csp)  || isPointsConnected(ep ,cep) || isPointsConnected(sp ,csp) ||isPointsConnected(ep ,cep) )
+	{
+		double angle = angleBetweenLines(sp,ep,csp,cep);
+		if (angleBetweenLines(sp,ep,csp,cep) < 0.1)
+		{
+			return true;
+		}
+	}
+
+	return false;
+
+	
+}
+void LaneFinder::connectLines(std::vector< std::vector< struct line_points* > > &lines, std::vector< std::vector< struct line_points* > > &stoplines)
+{
+	for (int i =0;i<lines.size();i++)
+	{
+		if (lines[i].empty())
+			continue;
+		for (int j=i+1;j<lines.size();j++)
+		{
+			if(shouldBeOneLine(lines[i],lines[j]))
+			{
+				for(std::vector< struct line_points* >::iterator m=lines[j].begin(); m!=lines[j].end();m++ )
+				{
+					struct line_points *p;
+					copy_line_points_Struct(&p, *m);
+					lines[i].push_back(p);
+				}
+				lines[j].clear();
+				
+			}
+		}
+	}
+
+	int maxLength = 0;
+	int max = 0;
+	for (int i =0;i<lines.size();i++)
+	{
+		if (lines[i].size()>maxLength)
+		{
+			maxLength = lines[i].size();
+			max = i;
+		}
+	}
+
+	int secondLength = 0;
+	int secondMax = 0;
+	for (int i =0;i<lines.size();i++)
+	{
+		if (i!=max&&lines[i].size()>secondLength)
+		{
+			secondLength = lines[i].size();
+			secondMax = i;
+		}
+	}
+
+	if (maxLength > 180 && abs(lines[max][0]->point.y - lines[secondMax][0]->point.y)<20)
+	{
+		stoplines.push_back(lines[max]);
+		stoplines.push_back(lines[secondMax]);
+	}
 }
 
 void LaneFinder::doSelfJoining(CvPoint ep,std::vector< std::vector< struct line_points* > > &bin,std::vector< struct line_points*> &longestLine,int dist,char orientation)
@@ -1432,6 +1561,15 @@ double distBetweenPoints(CvPoint p1, CvPoint p2)
 		  return distCurr;
 }
 
+bool isPointsConnected(CvPoint p1, CvPoint p2)
+{
+	if (abs(p2.y-p1.y)<4)
+	{
+		return true;
+	}
+	return false;
+}
+
 int LaneFinder::getWidth()
 {
 		  return WIDTH;
@@ -2008,18 +2146,22 @@ int LaneFinder::extractLine(IplImage *imgInput, IplImage *imgOutput, IplImage *t
 	  }
 
 	  std::vector< struct line_points*> longestLine;
+	  std::vector<std::vector< struct line_points*>> lines;
+	  std::vector<std::vector< struct line_points*>> stoplines;
 	  int yLowerLimit=0;
 	  int yHigherLimit=imgInput->height;
 	  
-	  findLines(imgInput, img_out, _alpha, x_pos_tmp, longestLine, lowerLimit, higherLimit, yLowerLimit,yHigherLimit, bin, binRight, minSize, lengthTangent);
-
+	  //findLines(imgInput, img_out, _alpha, x_pos_tmp, longestLine, lowerLimit, higherLimit, yLowerLimit,yHigherLimit, bin, binRight, minSize, lengthTangent);
+	  findLines2(imgInput,lines,bin,binRight);
+	  connectLines(lines,stoplines);
 	  if(debug)
 	  {
 		 cvCvtColor(imgInput, imgOutput, CV_GRAY2BGR);
 		 testShadow(test,longestLine);
-		 printLongestLineInColor(imgOutput, longestLine, -1);
+		 //printLongestLineInColor(imgOutput, longestLine, -1);
 		 //printBinInColor(imgOutput,bin,'R');
-		 //printBinInColor(imgOutput,binRight,'B');
+		 //printBinInColor(imgOutput,lines,'B');
+		 printBinInColor(imgOutput,stoplines,'B');
 	  }
 	  
 
